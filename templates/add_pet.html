@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}Add Pet · Purrfect Planner{% endblock %}
+{% block content %}
+<div class="card shadow-sm">
+    <div class="card-body">
+        <h1 class="h4 mb-3">Add Pet</h1>
+        <form action="{{ url_for('add_pet') }}" method="post" enctype="multipart/form-data" novalidate>
+            <div class="mb-3">
+                <label class="form-label">Name</label>
+                <input name="name" class="form-control" required maxlength="50">
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Species</label>
+                <input name="species" class="form-control" required maxlength="50" placeholder="Dog, Cat, …">
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Photo (PNG/JPG/GIF)</label>
+                <input type="file" name="photo" class="form-control" accept="image/*">
+            </div>
+            <button class="btn btn-primary">Save Pet</button>
+        </form>
+    </div>
+</div>
+{% endblock %}
