@@ -37,7 +37,8 @@ def update_task_status(db_path, task_id, new_status):
     conn = sqlite3.connect(db_path)
     cur = conn.cursor()
 
-    cur.execute("""   """, (new_status, task_id))
-
+    cur.execute(f"""Update status 
+                set status = {new_status} 
+                where id = {task_id}""")
     conn.commit()
     conn.close()
