@@ -1,5 +1,4 @@
 import sqlite3
-from datetime import datetime, timedelta
 import smtplib
 import ssl
 from email.message import EmailMessage
