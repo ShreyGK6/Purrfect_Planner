@@ -1,3 +1,12 @@
 body {
   background: #f8fafc;
 }
+
+.navbar-brand{
+    letter-spacing: 0.3px;
+}
+
+.card img{
+    object-fit: cover;
+    height: 180px;
+}
