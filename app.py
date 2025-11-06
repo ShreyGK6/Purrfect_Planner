@@ -1,7 +1,8 @@
 from flask import Flask, render_template, flash, request, redirect, url_for, session
-
+from utils.notifications import notifications_bp
 
 app = Flask(__name__)
+app.register_blueprint(notifications_bp)
 app.secret_key = "dev-key" #for flash messages only
 
 #testing

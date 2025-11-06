@@ -1,32 +1,29 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8" />
-    <title>Task Reminder</title>
-    <style>
-        .flash-success { color: green; }
-        .flash-error { color: red; }
-    </style>
-</head>
-<body>
-    <h1>Send Task Reminder</h1>
+{% extends "base.html" %}
 
-    {% with messages = get_flashed_messages(with_categories=true) %}
-      {% if messages %}
-        <ul>
-          {% for category, msg in messages %}
-            <li class="flash-{{ category }}">{{ msg }}</li>
-          {% endfor %}
-        </ul>
-      {% endif %}
-    {% endwith %}
+{% block content %}
+<h1 class="mb-4">Send Task Reminder</h1>
 
-    <form method="POST" action="{{ url_for('index') }}">
-        <label>Task ID: <input type="number" name="task_id" required></label><br><br>
-        <label>Email: <input type="email" name="email" required></label><br><br>
-        <label>Task Name: <input type="text" name="task_name" required></label><br><br>
-        <label>Due Time (YYYY-MM-DD HH:MM:SS): <input type="text" name="due_time" required></label><br><br>
-        <button type="submit">Send Reminder</button>
-    </form>
-</body>
-</html>
+<form method="POST" action="{{ url_for('notifications.index') }}" class="card p-4 shadow-sm">
+    <div class="mb-3">
+        <label class="form-label">Task ID</label>
+        <input type="number" name="task_id" class="form-control" required>
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label">Email</label>
+        <input type="email" name="email" class="form-control" required>
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label">Task Name</label>
+        <input type="text" name="task_name" class="form-control" required>
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label">Due Time</label>
+        <input type="datetime-local" name="due_time" class="form-control" required>
+    </div>
+
+    <button type="submit" class="btn btn-primary">Send Reminder</button>
+</form>
+{% endblock %}
