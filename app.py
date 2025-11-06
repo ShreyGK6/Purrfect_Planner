@@ -33,10 +33,23 @@ def add_task():
     return render_template("base.html")
 
 
-@app.route("/register")
+@app.route("/register,", methods = ['POST', "GET"])
 def register():
-    flash("register", "success")
-    return render_template("base.html")
+    if request.method == "POST":
+
+        #validation logic -> KEERTHIS
+        username = request.form.get("username")
+        password = request.form.get('password')
+        email = request.form.get("email")
+        if not (username and email and password ):
+            flash ("Please fill in all fields", "danger")
+            return render_template("register.html")
+        
+        #SAVE TO DB - KEERTHIS
+        flash("Account Successfully Created! Please Login.", 'success')
+        return render_template("login.html")
+
+    return render_template("register.html")
 
 
 
