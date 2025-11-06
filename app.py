@@ -23,6 +23,11 @@ MOCK_TASKS = [
   {"id": 203, "pet_id": 2, "title": "Bath + nail trim",   "desc": "Wash and trim nails.",              "date": "2025-11-10T14:00", "repeat": "monthly", "status": "pending"}
 ]
 
+MOCK_RECORDS = {
+    1: {"vaccine": "FVRCP, Rabies", "allergies": "None", "medication": "None", "vet_info": "UCR Vet Clinic"},
+    2: {"vaccine": "DHPP, Rabies", "allergies": "Chicken", "medication": "Fish oil", "vet_info": "Riverside Vet"},
+}
+
 @app.route("/")
 def home():
     return render_template("dashboard.html", user=MOCK_USER, pets=MOCK_PETS, tasks=MOCK_TASKS)
@@ -49,10 +54,23 @@ def login():
 def add_task(): #set up ui for adding the tasks
     return render_template("add_task.html", pets = MOCK_PETS) #make sure to pass in pets from db, using mock pets now
 
-@app.route("/pet_profile")
-def pet_profile():
-    flash("pet_profile", "success")
-    return render_template("base.html") 
+@app.route("/pet_profile<int:pet_id>")
+def pet_profile(pet_id):
+    pet = None
+    for p  in MOCK_PETS: #need to connect db to this
+        if p.get("id") == pet_id: #for every pet, get its id and save pet as "pet"
+            pet = p
+            break
+    pet_tasks =[]
+    for t in MOCK_TASKS:
+        if t.get("pet_id") == pet_id: #get all tasks for certain pet
+            pet_tasks.append(t)
+    
+
+    records = MOCK_RECORDS.get(pet_id, {"vaccine": "", "allergies": "", "medication": "", "vet_info": ""})
+
+    
+    return render_template("pet_profile.html", pet=pet, tasks=pet_tasks, records=records)
 
 
 @app.route("/medical_records")
