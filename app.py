@@ -47,13 +47,12 @@ def login():
 
 @app.route("/add_task")
 def add_task(): #set up ui for adding the tasks
-    flash("add_task", "success")
-    return render_template("base.html")
+    return render_template("add_task.html", pets = MOCK_PETS) #make sure to pass in pets from db, using mock pets now
 
 @app.route("/pet_profile")
 def pet_profile():
     flash("pet_profile", "success")
-    return render_template("base.html")
+    return render_template("base.html") 
 
 
 @app.route("/medical_records")
