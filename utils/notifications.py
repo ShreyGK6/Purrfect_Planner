@@ -65,7 +65,7 @@ def index():
             due_time = datetime.strptime(due_time_str, "%Y-%m-%d %H:%M")
         except ValueError:
             flash("Invalid due time format! Use YYYY-MM-DD HH:MM or HTML datetime-local", "error")
-            return redirect(url_for("index"))
+            return redirect(url_for("notifications.index"))
 
         success, message = send_email_reminder(to_email, task_name, due_time)
         if success:
@@ -73,6 +73,6 @@ def index():
         else:
             flash(f"Error sending reminder: {message}", "error")
 
-        return redirect(url_for("index"))
+        return redirect(url_for("notifications.index"))
 
     return render_template("index.html")
