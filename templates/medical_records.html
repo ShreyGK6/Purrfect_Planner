@@ -1,0 +1,13 @@
+{% extends 'base.html' %}
+{% block content %}
+<h2 class="mb-3">Medical Records — {{ pet.name }}</h2>
+<table class="table table-striped">
+  <tbody>
+    <tr><th scope="row" style="width:220px">Vaccines</th><td>{{ records.vaccine }}</td></tr>
+    <tr><th scope="row">Allergies</th><td>{{ records.allergies }}</td></tr>
+    <tr><th scope="row">Medication</th><td>{{ records.medication }}</td></tr>
+    <tr><th scope="row">Veterinarian</th><td>{{ records.vet_info }}</td></tr>
+  </tbody>
+</table>
+<a class="btn btn-primary " href="{{ url_for('pet_profile', pet_id=pet.id) }}"> Back To Profile</a>
+{% endblock %}

@@ -1,4 +1,4 @@
-from flask import Flask, render_template, flash, request, redirect, url_for
+from flask import Flask, render_template, flash, request, redirect, url_for, session
 
 
 app = Flask(__name__)
@@ -30,6 +30,8 @@ MOCK_RECORDS = {
 
 @app.route("/")
 def home():
+    if not session.get("logged_in"):
+        return redirect(url_for("starter"))
     return render_template("dashboard.html", user=MOCK_USER, pets=MOCK_PETS, tasks=MOCK_TASKS)
 
 @app.route("/login", methods = ['POST', 'GET'])
@@ -42,6 +44,8 @@ def login():
         #need password authentication here (KEERTHIS PART)
         if username and password:
             flash(f"Welcome back, {username}!", 'success')
+            session['logged_in'] = True
+            session['username'] = username
             return redirect(url_for("home"))
         else:
             flash("Invalid login.", "danger")
@@ -49,6 +53,16 @@ def login():
 
 
     return render_template("login.html")
+
+@app.route("/logout")
+def logout():
+    session.pop("logged_in", None)
+    session.pop("username", None)
+    return redirect(url_for("starter"))
+
+@app.route("/starter")
+def starter():
+    return render_template("starter.html")
 
 @app.route("/add_task")
 def add_task(): #set up ui for adding the tasks
@@ -73,12 +87,19 @@ def pet_profile(pet_id):
     return render_template("pet_profile.html", pet=pet, tasks=pet_tasks, records=records)
 
 
-@app.route("/medical_records")
-def medical_records():
-    flash("medical_records", "success")
-    return render_template("base.html")
+@app.route("/records/<int:pet_id>")
+def medical_records(pet_id):
+    pet = None
+    for p  in MOCK_PETS: #need to connect db to this
+        if p.get("id") == pet_id: #for every pet, get its id and save pet as "pet"
+            pet = p
+            break
+    
+    records = MOCK_RECORDS.get(pet_id, {"vaccine": "", "allergies": "", "medication": "", "vet_info": ""})  
 
-@app.route("/register,", methods = ['POST', "GET"])
+    return render_template("medical_records.html", pet=pet, records=records)
+
+@app.route("/register", methods = ['POST', "GET"])
 def register():
     if request.method == "POST":
 
@@ -87,12 +108,10 @@ def register():
         password = request.form.get('password')
         email = request.form.get("email")
         if not (username and email and password ):
-            flash ("Please fill in all fields", "danger")
             return render_template("register.html")
         
         #SAVE TO DB - KEERTHIS
-        flash("Account Successfully Created! Please Login.", 'success')
-        return render_template("login.html")
+        return redirect(url_for("login"))  
 
     return render_template("register.html")
 
