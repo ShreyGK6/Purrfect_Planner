@@ -109,39 +109,49 @@ def create_app():
         return render_template("starter.html")
 
     @app.route("/add_task")
+    @login_required
     def add_task(): #set up ui for adding the tasks
-        return render_template("add_task.html", pets = MOCK_PETS) #make sure to pass in pets from db, using mock pets now
+        my_pets = Pet.query.filter_by(owner_id=current_user.id).all()
+        pets = []
+        for p in my_pets:
+            pets.append(p.to_card())
+
+        return render_template("add_task.html", pets = pets) #make sure to pass in pets from db, using mock pets now
 
     @app.route("/pet_profile<int:pet_id>")
+    @login_required
     def pet_profile(pet_id):
-        pet = None
-        for p  in MOCK_PETS: #need to connect db to this
-            if p.get("id") == pet_id: #for every pet, get its id and save pet as "pet"
-                pet = p
-                break
-        pet_tasks =[]
-        for t in MOCK_TASKS:
-            if t.get("pet_id") == pet_id: #get all tasks for certain pet
-                pet_tasks.append(t)
-        
+        pet = Pet.query.filter_by(id=pet_id, owner_id=current_user.id).first_or_404()
+        pet_tasks = []
+        for t in Task.query.filter_by(pet_id=pet.id).all():
+            pet_tasks.append(t.to_row())
 
-        records = MOCK_RECORDS.get(pet_id, {"vaccine": "", "allergies": "", "medication": "", "vet_info": ""})
+        if pet.medical_record:
+            records = pet.medical_record.to_view()
+        else:
+            records = {"vaccine": "","allergies": "","medication": "","vet_info": "" }
 
         
-        return render_template("pet_profile.html", pet=pet, tasks=pet_tasks, records=records)
+        return render_template("pet_profile.html", pet=pet.to_card(), tasks=pet_tasks, records=records)
 
 
     @app.route("/records/<int:pet_id>")
+    @login_required
     def medical_records(pet_id):
-        pet = None
-        for p  in MOCK_PETS: #need to connect db to this
-            if p.get("id") == pet_id: #for every pet, get its id and save pet as "pet"
-                pet = p
-                break
+        pet = Pet.query.filter_by(id=pet_id, owner_id=current_user.id).first_or_404()
+        if pet.medical_record:
+            records = pet.medical_record.to_view()
+        else:
+            records = {
+                "vaccine": "",
+                "allergies": "",
+                "medication": "",
+                "vet_info": ""
+            }
         
-        records = MOCK_RECORDS.get(pet_id, {"vaccine": "", "allergies": "", "medication": "", "vet_info": ""})  
+        records = {"vaccine": "","allergies": "","medication": "","vet_info": "" }  
 
-        return render_template("medical_records.html", pet=pet, records=records)
+        return render_template("medical_records.html", pet=pet.to_card(), records=records)
 
     @app.route("/register", methods = ['POST', "GET"])
     def register():
