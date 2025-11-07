@@ -1,5 +1,12 @@
 from flask import Flask, render_template, flash, request, redirect, url_for, session
+from flask_login import LoginManager, login_user, logout_user, login_required, current_user
+from dotenv import load_dotenv
+import os
+from config import Config
+from models import db, User, Pet, Task, MedicalRecord
 
+#loading environment variables from .env 
+load_dotenv()
 
 app = Flask(__name__)
 app.secret_key = "dev-key" #for flash messages only
@@ -28,99 +35,150 @@ MOCK_RECORDS = {
     2: {"vaccine": "DHPP, Rabies", "allergies": "Chicken", "medication": "Fish oil", "vet_info": "Riverside Vet"},
 }
 
-@app.route("/")
-def home():
-    if not session.get("logged_in"):
-        return redirect(url_for("starter"))
-    return render_template("dashboard.html", user=MOCK_USER, pets=MOCK_PETS, tasks=MOCK_TASKS)
-
-@app.route("/login", methods = ['POST', 'GET'])
-def login():
-    if request.method == 'POST':
-        username = request.form.get("username")
-        password = request.form.get("password")
-
-
-        #need password authentication here (KEERTHIS PART)
-        if username and password:
-            flash(f"Welcome back, {username}!", 'success')
-            session['logged_in'] = True
-            session['username'] = username
-            return redirect(url_for("home"))
-        else:
-            flash("Invalid login.", "danger")
-            return redirect(url_for("login.html"))
-
-
-    return render_template("login.html")
-
-@app.route("/logout")
-def logout():
-    session.pop("logged_in", None)
-    session.pop("username", None)
-    return redirect(url_for("starter"))
-
-@app.route("/starter")
-def starter():
-    return render_template("starter.html")
-
-@app.route("/add_task")
-def add_task(): #set up ui for adding the tasks
-    return render_template("add_task.html", pets = MOCK_PETS) #make sure to pass in pets from db, using mock pets now
-
-@app.route("/pet_profile<int:pet_id>")
-def pet_profile(pet_id):
-    pet = None
-    for p  in MOCK_PETS: #need to connect db to this
-        if p.get("id") == pet_id: #for every pet, get its id and save pet as "pet"
-            pet = p
-            break
-    pet_tasks =[]
-    for t in MOCK_TASKS:
-        if t.get("pet_id") == pet_id: #get all tasks for certain pet
-            pet_tasks.append(t)
+def create_app():
+    #making flask app and point it to templates and static folders
+    app = Flask(__name__, template_folder="templates", static_folder="static")
+    app.config.from_object(Config)
+    #making sure database foler exists for sqlite
+    if app.config["SQLALCHEMY_DATABASE_URI"].startswith("sqlite:///"):
+            db_file = app.config["SQLALCHEMY_DATABASE_URI"].replace("sqlite:///", "")
+            os.makedirs(os.path.dirname(db_file), exist_ok=True)
+    #connecting sqlalchemy to flask app.
+    db.init_app(app)
+    #helps flask manage user sessions
+    login_manager = LoginManager()
+    login_manager.init_app(app)
+    login_manager.login_view = "login"
+    #tells flask how to get a user object from the database whenever someone is logged in
+    @login_manager.user_loader
+    def load_user(user_id):
+        return User.query.get(int(user_id))
     
+    @app.route("/")
+    @login_required
+    def home():
+        pets = []
+        for p in current_user.pets:
+            pets.append(p.to_card())
 
-    records = MOCK_RECORDS.get(pet_id, {"vaccine": "", "allergies": "", "medication": "", "vet_info": ""})
+        tasks = (
+            Task.query.join(Pet)
+            .filter(Pet.owner_id == current_user.id)
+            .order_by(Task.date.asc())
+            .all()
+        )
+        task_rows = []
+        for t in tasks:
+            task_rows.append(t.to_row())
 
-    
-    return render_template("pet_profile.html", pet=pet, tasks=pet_tasks, records=records)
+        return render_template( "dashboard.html", user={"username": current_user.username}, pets=pets,tasks=task_rows )
 
-
-@app.route("/records/<int:pet_id>")
-def medical_records(pet_id):
-    pet = None
-    for p  in MOCK_PETS: #need to connect db to this
-        if p.get("id") == pet_id: #for every pet, get its id and save pet as "pet"
-            pet = p
-            break
-    
-    records = MOCK_RECORDS.get(pet_id, {"vaccine": "", "allergies": "", "medication": "", "vet_info": ""})  
-
-    return render_template("medical_records.html", pet=pet, records=records)
-
-@app.route("/register", methods = ['POST', "GET"])
-def register():
-    if request.method == "POST":
-
-        #validation logic -> KEERTHIS
-        username = request.form.get("username")
-        password = request.form.get('password')
-        email = request.form.get("email")
-        if not (username and email and password ):
-            return render_template("register.html")
+    @app.route("/login", methods = ['POST', 'GET'])
+    def login():
+        if current_user.is_authenticated:
+                return redirect(url_for("home"))
         
-        #SAVE TO DB - KEERTHIS
-        return redirect(url_for("login"))  
+        if request.method == 'POST':
+            username = request.form.get("username")
+            password = request.form.get("password")
+            user = User.query.filter_by(username=username).first()
 
-    return render_template("register.html")
+
+            #need password authentication here (KEERTHIS PART)
+            if user and user.check_password(password):
+                login_user(user)
+                flash(f"Welcome back, {username}!", 'success')
+                return redirect(url_for("home"))
+            else:
+                flash("Invalid login.", "danger")
+                return redirect(url_for("login.html"))
 
 
+        return render_template("login.html")
 
+    @app.route("/logout")
+    def logout():
+        logout_user()
+        flash("You’ve been logged out.", "info")
+        return redirect(url_for("starter"))
+
+    @app.route("/starter")
+    def starter():
+        if current_user.is_authenticated:
+                return redirect(url_for("home"))
+        return render_template("starter.html")
+
+    @app.route("/add_task")
+    def add_task(): #set up ui for adding the tasks
+        return render_template("add_task.html", pets = MOCK_PETS) #make sure to pass in pets from db, using mock pets now
+
+    @app.route("/pet_profile<int:pet_id>")
+    def pet_profile(pet_id):
+        pet = None
+        for p  in MOCK_PETS: #need to connect db to this
+            if p.get("id") == pet_id: #for every pet, get its id and save pet as "pet"
+                pet = p
+                break
+        pet_tasks =[]
+        for t in MOCK_TASKS:
+            if t.get("pet_id") == pet_id: #get all tasks for certain pet
+                pet_tasks.append(t)
+        
+
+        records = MOCK_RECORDS.get(pet_id, {"vaccine": "", "allergies": "", "medication": "", "vet_info": ""})
+
+        
+        return render_template("pet_profile.html", pet=pet, tasks=pet_tasks, records=records)
+
+
+    @app.route("/records/<int:pet_id>")
+    def medical_records(pet_id):
+        pet = None
+        for p  in MOCK_PETS: #need to connect db to this
+            if p.get("id") == pet_id: #for every pet, get its id and save pet as "pet"
+                pet = p
+                break
+        
+        records = MOCK_RECORDS.get(pet_id, {"vaccine": "", "allergies": "", "medication": "", "vet_info": ""})  
+
+        return render_template("medical_records.html", pet=pet, records=records)
+
+    @app.route("/register", methods = ['POST', "GET"])
+    def register():
+        if request.method == "POST":
+
+            #validation logic -> KEERTHIS
+            username = request.form.get("username")
+            password = request.form.get('password')
+            email = request.form.get("email")
+
+            if not (username and email and password ):
+                flash("All fields are required.", "danger")
+                return render_template("register.html")
+            #prevents duplicate usernames and emails
+            if User.query.filter((User.username == username) | (User.email == email)).first():
+                    flash("Username or email already exists.", "danger")
+                    return render_template("register.html")
+            #SAVE TO DB - KEERTHIS
+            u = User(username=username, email=email)
+            u.set_password(password)
+            db.session.add(u)
+            db.session.commit()
+            flash("Account created successfully. Please log in.", "success")
+            
+            #SAVE TO DB - KEERTHIS
+            return redirect(url_for("login"))  
+
+        return render_template("register.html")
+    
+    return app
 
 
 
 
 
 if __name__ == "__main__":
+    app = create_app()
+    with app.app_context():
+        db.create_all()
     app.run(debug=True)
