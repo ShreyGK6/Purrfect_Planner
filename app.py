@@ -1,36 +1,55 @@
 import os
 import uuid
-
 from flask import Flask, render_template, flash, request, redirect, url_for, session
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from werkzeug.utils import secure_filename
 from dotenv import load_dotenv
-
 from config import Config
 from models import db, User, Pet, Task, MedicalRecord
+from utils.notifications import notifications_bp
 
 load_dotenv()
 
+# ------------------ CONFIG ------------------
+
+USE_MOCK = False 
+
+# ------------------ MOCK DATA (for UI testing) ------------------
+
+MOCK_USER = {"username": "shivani"}
+MOCK_PETS = [
+    {"id": 1, "name": "Mochi", "type": "cat", "photo_path": "/static/img/placeholder_cat.png"},
+    {"id": 2, "name": "Buddy", "type": "dog", "photo_path": "/static/img/placeholder_dog.png"},
+    {"id": 3, "name": "Luna", "type": "cat", "photo_path": "/static/img/placeholder_cat.png"},
+]
+
+MOCK_TASKS = [
+    {"id": 101, "pet_id": 1, "title": "Litter box clean", "desc": "Scoop clumps and add fresh litter.", "date": "2025-11-06T20:00", "repeat": "daily", "status": "pending"},
+    {"id": 102, "pet_id": 1, "title": "Brush coat", "desc": "Brush to reduce shedding.", "date": "2025-11-08T17:00", "repeat": "weekly", "status": "pending"},
+    {"id": 201, "pet_id": 2, "title": "Morning walk", "desc": "30 min leash walk.", "date": "2025-11-06T07:30", "repeat": "daily", "status": "pending"},
+]
+
+MOCK_RECORDS = {
+    1: {"vaccine": "FVRCP, Rabies", "allergies": "None", "medication": "None", "vet_info": "UCR Vet Clinic"},
+    2: {"vaccine": "DHPP, Rabies", "allergies": "Chicken", "medication": "Fish oil", "vet_info": "Riverside Vet"},
+}
+
+
+# ------------------ APP FACTORY ------------------
+
 def create_app():
-    # app + config
     app = Flask(__name__, template_folder="templates", static_folder="static")
     app.config.from_object(Config)
+    app.secret_key = "dev-key"
 
-    #uploads config 
-    app.config["UPLOAD_FOLDER"] = os.path.join(app.static_folder, "uploads")  # absolute FS path
-    app.config["MAX_CONTENT_LENGTH"] = 4 * 1024 * 1024  # 4 MB
-    ALLOWED_EXT = {"png", "jpg", "jpeg", "gif"}
+    # Register blueprint (your notifications)
+    app.register_blueprint(notifications_bp)
 
-    def allowed_file(fname: str) -> bool:
-        return "." in fname and fname.rsplit(".", 1)[1].lower() in ALLOWED_EXT
-
+    # Uploads
+    app.config["UPLOAD_FOLDER"] = os.path.join(app.static_folder, "uploads")
     os.makedirs(app.config["UPLOAD_FOLDER"], exist_ok=True)
 
-    if app.config["SQLALCHEMY_DATABASE_URI"].startswith("sqlite:///"):
-        db_file = app.config["SQLALCHEMY_DATABASE_URI"].replace("sqlite:///", "")
-        os.makedirs(os.path.dirname(db_file), exist_ok=True)
-
-    # db + login
+    # Database setup
     db.init_app(app)
     login_manager = LoginManager()
     login_manager.init_app(app)
@@ -40,16 +59,30 @@ def create_app():
     def load_user(user_id):
         return User.query.get(int(user_id))
 
-    # ---------- Routes ----------
+    # ------------------ ROUTES ------------------
 
     @app.route("/starter")
     def starter():
-        if current_user.is_authenticated:
+        if not USE_MOCK and current_user.is_authenticated:
             return redirect(url_for("home"))
         return render_template("starter.html")
 
+    # ---------- LOGIN ----------
     @app.route("/login", methods=["GET", "POST"])
     def login():
+        if USE_MOCK:
+            if request.method == "POST":
+                username = request.form.get("username")
+                password = request.form.get("password")
+                if username and password:
+                    session["logged_in"] = True
+                    session["username"] = username
+                    flash(f"Welcome back, {username}!", "success")
+                    return redirect(url_for("home"))
+                flash("Invalid login.", "danger")
+            return render_template("login.html")
+
+        # Real login
         if current_user.is_authenticated:
             return redirect(url_for("home"))
 
@@ -61,111 +94,97 @@ def create_app():
                 login_user(user)
                 flash(f"Welcome back, {username}!", "success")
                 return redirect(url_for("home"))
-            else:
-                flash("Invalid login.", "danger")
-                return redirect(url_for("login"))
+            flash("Invalid login.", "danger")
 
         return render_template("login.html")
 
+    # ---------- LOGOUT ----------
     @app.route("/logout")
-    @login_required
     def logout():
+        if USE_MOCK:
+            session.clear()
+            return redirect(url_for("starter"))
         logout_user()
         flash("You’ve been logged out.", "info")
         return redirect(url_for("starter"))
 
-    # Dashboard 
+    # ---------- DASHBOARD ----------
     @app.route("/")
-    @login_required
     def home():
-        # Pets for current user
-        pets = [p.to_card() for p in current_user.pets]
+        if USE_MOCK:
+            if not session.get("logged_in"):
+                return redirect(url_for("starter"))
+            return render_template("dashboard.html", user=MOCK_USER, pets=MOCK_PETS, tasks=MOCK_TASKS)
 
-        # Upcoming tasks for current user 
+        # Real DB version
+        if not current_user.is_authenticated:
+            return redirect(url_for("starter"))
+        pets = [p.to_card() for p in current_user.pets]
         tasks = (
             Task.query.join(Pet)
             .filter(Pet.owner_id == current_user.id)
             .order_by(Task.date.asc())
             .all()
         )
-        task_rows = [t.to_row() for t in tasks]
+        return render_template("dashboard.html", user={"username": current_user.username}, pets=pets, tasks=[t.to_row() for t in tasks])
 
-        return render_template(
-            "dashboard.html",
-            user={"username": current_user.username},
-            pets=pets,
-            tasks=task_rows,
-        )
-
-    # link to /dashboard 
-    @app.route("/dashboard")
-    @login_required
-    def dashboard_alias():
-        return home()
-
-    # Add Pet 
+    # ---------- ADD PET ----------
     @app.route("/add-pet", methods=["GET", "POST"])
-    @login_required
     def add_pet():
-        if request.method == "GET":
-            return render_template("add_pet.html")
+        if USE_MOCK:
+            return render_template("add_pet.html", pets=MOCK_PETS)
+        # (Jerome’s add_pet logic here if USE_MOCK=False)
+        return render_template("add_pet.html")
 
-        name = (request.form.get("name") or "").strip()
-        species = (request.form.get("species") or "").strip()
-        photo = request.files.get("photo")
-
-        if not name or not species:
-            flash("Name and species are required!", "danger")
-            return redirect(url_for("add_pet"))
-
-        filename = None
-        if photo and photo.filename:
-            if not allowed_file(photo.filename):
-                flash("Invalid file type. Please upload PNG/JPG/GIF.", "danger")
-                return redirect(url_for("add_pet"))
-            safe = secure_filename(photo.filename)
-            root, ext = os.path.splitext(safe)
-            unique = f"{root}_{uuid.uuid4().hex[:8]}{ext}"
-            save_path = os.path.join(app.config["UPLOAD_FOLDER"], unique)
-            photo.save(save_path)
-            # store web path for templates:
-            filename = f"/static/uploads/{unique}"
-
-        pet = Pet(name=name, type=species, photo_path=filename or "", owner_id=current_user.id)
-        db.session.add(pet)
-        db.session.commit()
-
-        flash("Pet added successfully!", "success")
-        return redirect(url_for("home"))
-
+    # ---------- ADD TASK ----------
     @app.route("/add_task")
-    @login_required
     def add_task():
+        if USE_MOCK:
+            return render_template("add_task.html", pets=MOCK_PETS)
         my_pets = Pet.query.filter_by(owner_id=current_user.id).all()
-        pets = [p.to_card() for p in my_pets]
-        return render_template("add_task.html", pets=pets)
+        return render_template("add_task.html", pets=[p.to_card() for p in my_pets])
 
+    # ---------- PET PROFILE ----------
     @app.route("/pet_profile/<int:pet_id>")
-    @login_required
     def pet_profile(pet_id):
+        if USE_MOCK:
+            pet = next((p for p in MOCK_PETS if p["id"] == pet_id), None)
+            tasks = [t for t in MOCK_TASKS if t["pet_id"] == pet_id]
+            records = MOCK_RECORDS.get(pet_id, {"vaccine": "", "allergies": "", "medication": "", "vet_info": ""})
+            return render_template("pet_profile.html", pet=pet, tasks=tasks, records=records)
+
         pet = Pet.query.filter_by(id=pet_id, owner_id=current_user.id).first_or_404()
         pet_tasks = [t.to_row() for t in Task.query.filter_by(pet_id=pet.id).all()]
-        records = pet.medical_record.to_view() if pet.medical_record else {
-            "vaccine": "", "allergies": "", "medication": "", "vet_info": ""
-        }
+        records = pet.medical_record.to_view() if pet.medical_record else {"vaccine": "", "allergies": "", "medication": "", "vet_info": ""}
         return render_template("pet_profile.html", pet=pet.to_card(), tasks=pet_tasks, records=records)
 
+    # ---------- MEDICAL RECORDS ----------
     @app.route("/records/<int:pet_id>")
-    @login_required
     def medical_records(pet_id):
+        if USE_MOCK:
+            pet = next((p for p in MOCK_PETS if p["id"] == pet_id), None)
+            records = MOCK_RECORDS.get(pet_id, {"vaccine": "", "allergies": "", "medication": "", "vet_info": ""})
+            return render_template("medical_records.html", pet=pet, records=records)
+
         pet = Pet.query.filter_by(id=pet_id, owner_id=current_user.id).first_or_404()
-        records = pet.medical_record.to_view() if pet.medical_record else {
-            "vaccine": "", "allergies": "", "medication": "", "vet_info": ""
-        }
+        records = pet.medical_record.to_view() if pet.medical_record else {"vaccine": "", "allergies": "", "medication": "", "vet_info": ""}
         return render_template("medical_records.html", pet=pet.to_card(), records=records)
 
+    # ---------- REGISTER ----------
     @app.route("/register", methods=["GET", "POST"])
     def register():
+        if USE_MOCK:
+            if request.method == "POST":
+                username = request.form.get("username")
+                password = request.form.get("password")
+                email = request.form.get("email")
+                if not (username and password and email):
+                    flash("All fields are required.", "danger")
+                    return render_template("register.html")
+                flash("Mock registration complete!", "success")
+                return redirect(url_for("login"))
+            return render_template("register.html")
+
         if request.method == "POST":
             username = request.form.get("username")
             email = request.form.get("email")
@@ -179,9 +198,9 @@ def create_app():
                 flash("Username or email already exists.", "danger")
                 return render_template("register.html")
 
-            u = User(username=username, email=email)
-            u.set_password(password)
-            db.session.add(u)
+            new_user = User(username=username, email=email)
+            new_user.set_password(password)
+            db.session.add(new_user)
             db.session.commit()
             flash("Account created successfully. Please log in.", "success")
             return redirect(url_for("login"))
@@ -194,5 +213,6 @@ def create_app():
 if __name__ == "__main__":
     app = create_app()
     with app.app_context():
-        db.create_all()
+        if not USE_MOCK:
+            db.create_all()
     app.run(debug=True)

@@ -1,32 +1,59 @@
 {% extends "base.html" %}
 {% block title %}Dashboard · Purrfect Planner{% endblock %}
+
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-3">
-    <h1 class="h4 m-0">Your Pets</h1>
-    <a class="btn btn-sm btn-primary" href="{{ url_for('add_pet') }}">Add Pet</a>
+<div class="d-flex align-items-center justify-content-between mb-3">
+  <h2 class="mb-0">Welcome, {{ current_user.username }}!</h2>
+  <div>
+    <a class="btn btn-primary me-2" href="{{ url_for('add_pet') }}">+ Add Pet</a>
+    <a class="btn btn-danger" href="{{ url_for('add_task') }}">+ Add Task</a>
+  </div>
 </div>
 
+<!-- PETS SECTION -->
+<h4 class="mt-4 mb-3">Your Pets</h4>
 {% if pets %}
 <div class="row g-3">
-    {% for p in pets %}
-    <div class="col-md-4">
-        <div class="card h-100 shadow-sm">
-            {% if p.photo %}
-            <img src="{{ url_for('static', filename='uploads/' ~ p.photo) }}" class="card-img-top" alt="{{ p.name }}">
-            {% else %}
-            <div class="ratio ratio-16x9 bg-secondary bg-opacity-10 d-flex align-items-center justify-content-center">
-                <span class="text-muted">No photo</span>
-            </div>
-            {% endif %}
-            <div class="card-body">
-                <h2 class="h5">{{ p.name }}</h2>
-                <p class="text-muted mb-2">{{ p.species }}</p>
-            </div>
-        </div>
+  {% for pet in pets %}
+  <div class="col-lg-3 col-md-4">
+    <div class="card h-100 shadow-sm">
+      {% if pet.photo %}
+      <img src="{{ url_for('static', filename='uploads/' ~ pet.photo) }}" class="card-img-top" alt="{{ pet.name }}">
+      {% else %}
+      <img src="https://placehold.co/600x400?text=Pet" class="card-img-top" alt="{{ pet.name }}">
+      {% endif %}
+      <div class="card-body">
+        <h4 class="card-title">{{ pet.name }}
+          {% if pet.species %}
+            <span class="badge rounded-pill text-bg-warning">{{ pet.species }}</span>
+          {% endif %}
+        </h4>
+        <a class="btn btn-sm btn-primary" href="{{ url_for('pet_profile', pet_id=pet.id) }}">View Profile</a>
+        <a class="btn btn-sm btn-success" href="{{ url_for('medical_records', pet_id=pet.id) }}">Medical Records</a>
+      </div>
     </div>
-    {% endfor %}
+  </div>
+  {% endfor %}
 </div>
 {% else %}
 <div class="alert alert-info">You haven’t added any pets yet.</div>
+{% endif %}
+
+<!-- TASKS SECTION -->
+<h4 class="mt-5 mb-3">Upcoming Tasks</h4>
+{% if tasks %}
+<div class="list-group">
+  {% for t in tasks %}
+  <div class="list-group-item d-flex justify-content-between align-items-center">
+    <div>
+      <div class="fw-semibold">{{ t.title }}</div>
+      <div class="small text-muted">{{ t.desc }} ~ {{ t.date }} ~ {{ t.repeat }}</div>
+    </div>
+    <a class="btn btn-sm btn-outline-success" href="#">Mark Complete</a>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="alert alert-info">No upcoming tasks yet.</div>
 {% endif %}
 {% endblock %}
