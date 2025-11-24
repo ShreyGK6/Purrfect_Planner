@@ -18,6 +18,7 @@
              <ul class="navbar-nav me-auto mb-2 mb-lg-0">
                 <li class="nav-item"><a class="nav-link" href="{{ url_for('home') }}">Home</a></li>
                 <li class="nav-item"><a class="nav-link" href="{{ url_for('add_task') }}">Add Task</a></li>
+                <li class="nav-item"><a class="nav-link" href="{{ url_for('notifications.index') }}">Notifications</a></li>
             </ul>
             <ul class="navbar-nav ms-auto">
                 {% if session.get('logged_in') %}
