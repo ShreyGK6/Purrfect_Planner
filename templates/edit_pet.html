@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}Edit Pet · Purrfect Planner{% endblock %}
+
+{% block content %}
+<div class="card shadow-sm">
+    <div class="card-body">
+        <h1 class="h4 mb-3">Edit Pet</h1>
+
+        {# show current photo if there is one #}
+        {% if pet.photo_path %}
+        <div class="mb-3">
+            <label class="form-label d-block">Current Photo</label>
+            <img src="{{ pet.photo_path }}" alt="{{ pet.name }}" class="img-thumbnail"
+                style="max-width: 240px; height: auto;">
+        </div>
+        {% endif %}
+
+        <form action="{{ url_for('edit_pet', pet_id=pet.id) }}" method="post" enctype="multipart/form-data" novalidate>
+            <div class="mb-3">
+                <label class="form-label">Name</label>
+                <input name="name" class="form-control" required maxlength="50" value="{{ pet.name }}">
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">Species</label>
+                <input name="species" class="form-control" required maxlength="50" value="{{ pet.type }}">
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">New Photo (optional)</label>
+                <input type="file" name="photo" class="form-control" accept="image/*">
+                <div class="form-text">
+                    Leave this empty if you want to keep the current photo.
+                </div>
+            </div>
+
+            <button class="btn btn-primary">Save Changes</button>
+            <a class="btn btn-link" href="{{ url_for('home') }}">Cancel</a>
+        </form>
+    </div>
+</div>
+{% endblock %}
