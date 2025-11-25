@@ -18,16 +18,14 @@
           <ul class="navbar-nav me-auto mb-2 mb-lg-0">
             <li class="nav-item"><a class="nav-link" href="{{ url_for('home') }}">Home</a></li>
             <li class="nav-item"><a class="nav-link" href="{{ url_for('add_task') }}">Add Task</a></li>
+            <li class="nav-item"><a class="nav-link" href="{{ url_for('add_pet') }}">Add Pet</a></li>
           </ul>
-
-          <!-- ✅ UPDATED CONDITIONAL: use current_user instead of session -->
           <ul class="navbar-nav ms-auto">
             {% if current_user.is_authenticated %}
               <li class="nav-item">
                 <a class="btn btn-outline-danger" href="{{ url_for('logout') }}">Logout</a>
               </li>
             {% else %}
-              <!-- Optional: show Login/Register links when logged out -->
               <li class="nav-item"><a class="btn btn-outline-primary me-2" href="{{ url_for('login') }}">Login</a></li>
               <li class="nav-item"><a class="btn btn-outline-success" href="{{ url_for('register') }}">Register</a></li>
             {% endif %}
