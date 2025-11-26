@@ -1,0 +1,17 @@
+{% extends 'base.html' %}
+{% block content %}
+<h2 class="mb-3">Edit Task</h2>
+
+<form class="col-12 col-md-8 col-lg-6"
+      method="post"
+      action="{{ url_for('edit_task', task_id=task.id) }}">
+  <div class="mb-3">
+    <label class="form-label">Pet</label>
+    <select class="form-select" name="pet_id" required>
+      {% for p in pets %}
+      <option value="{{ p.id }}" {% if p.id == task.pet_id %}selected{% endif %}>
+        {{ p.name }}
+      </option>
+      {% endfor %}
+    </select>
+  </div>
