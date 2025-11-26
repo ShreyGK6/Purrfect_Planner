@@ -1,7 +1,30 @@
 {% extends 'base.html' %}
 {% block title %}Edit Medical Record ~ Purrfect Planner{% endblock %}
-
-this is edit medical records page 
 {% block content %}
+
+<form method="POST">
+  <div class="mb-3">
+    <label for="vaccine" class="form-label">Vaccines</label>
+    <textarea class="form-control" id="vaccine" name="vaccine" rows="2">{{ records.vaccine }}</textarea>
+  </div>
+
+  <div class="mb-3">
+    <label for="allergies" class="form-label">Allergies</label>
+    <textarea class="form-control" id="allergies" name="allergies" rows="2">{{ records.allergies }}</textarea>
+  </div>
+
+  <div class="mb-3">
+    <label for="medication" class="form-label">Medication</label>
+    <textarea class="form-control" id="medication" name="medication" rows="2">{{ records.medication }}</textarea>
+  </div>
+
+  <div class="mb-3">
+    <label for="vet_info" class="form-label">Veterinarian</label>
+    <textarea class="form-control" id="vet_info" name="vet_info" rows="2">{{ records.vet_info }}</textarea>
+  </div>
+
+  <button type="submit" class="btn btn-primary">Save</button>
+  <a href="{{ url_for('medical_records', pet_id=pet.id) }}" class="btn btn-secondary ms-2">Cancel</a>
+</form>
 
 {% endblock %}  
