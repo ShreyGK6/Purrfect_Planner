@@ -205,3 +205,15 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+# --- Purrfect Planner specifics ---
+# SQLite database(s)
+database/*.db
+*.sqlite
+*.sqlite3
+*.sqlite-journal
+*.db
+
+# Uploads (keep the folder, ignore files)
+static/uploads/*
+!static/uploads/.gitkeep
