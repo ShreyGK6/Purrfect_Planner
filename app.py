@@ -204,6 +204,7 @@ def create_app():
             flash("Task created successfully.", "success")
             return redirect(url_for("home"))
         return render_template("add_task.html", pets = pets) #make sure to pass in pets from db, using mock pets now
+    
     @app.route("/edit_task/<int:task_id>", methods=["GET", "POST"])
     @login_required
     def edit_task(task_id):
@@ -239,7 +240,7 @@ def create_app():
             except ValueError:
                 flash("Invalid date/time format.", "danger")
                 return render_template("edit_task.html", task=task, pets=pets)
-            # Update task parts
+            #Updating task parts and committing to db
             task.pet_id = pet.id
             task.title = title
             task.desc = desc
@@ -249,6 +250,24 @@ def create_app():
             flash("Task updated successfully.", "success")
             return redirect(url_for("home"))
         return render_template("edit_task.html", task=task, pets=pets)
+    
+    @app.route("/delete_task/<int:task_id>", methods=["POST"])
+    @login_required
+    def delete_task(task_id):
+        task = (Task.query.join(Pet).filter(Task.id == task_id, Pet.owner_id == current_user.id).first_or_404())
+        db.session.delete(task)
+        db.session.commit()
+        flash("Task deleted.", "info")
+        return redirect(request.referrer or url_for("home"))
+    
+    @app.route("/complete_task/<int:task_id>", methods=["POST"])
+    @login_required
+    def complete_task(task_id):
+        task = (Task.query.join(Pet).filter(Task.id == task_id, Pet.owner_id == current_user.id).first_or_404())
+        task.status = "completed"
+        db.session.commit()
+        flash("Task marked as complete.", "success")
+        return redirect(request.referrer or url_for("home"))
 
     @app.route("/pet_profile<int:pet_id>")
     @login_required
