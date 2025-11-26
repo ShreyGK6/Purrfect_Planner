@@ -2,6 +2,8 @@ from flask import Flask, render_template, flash, request, redirect, url_for, ses
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from dotenv import load_dotenv
 import os
+from werkzeug.utils import secure_filename
+import uuid
 from config import Config
 from models import db, User, Pet, Task, MedicalRecord
 
@@ -39,10 +41,22 @@ def create_app():
     #making flask app and point it to templates and static folders
     app = Flask(__name__, template_folder="templates", static_folder="static")
     app.config.from_object(Config)
+
+    #uploads config - jerome code
+    app.config["UPLOAD_FOLDER"] = os.path.join(app.static_folder, "uploads")  # absolute FS path
+    app.config["MAX_CONTENT_LENGTH"] = 4 * 1024 * 1024  # 4 MB
+    ALLOWED_EXT = {"png", "jpg", "jpeg", "gif"}
+
+    def allowed_file(fname: str) -> bool:
+        return "." in fname and fname.rsplit(".", 1)[1].lower() in ALLOWED_EXT
+
+    os.makedirs(app.config["UPLOAD_FOLDER"], exist_ok=True)
+
     #making sure database foler exists for sqlite
     if app.config["SQLALCHEMY_DATABASE_URI"].startswith("sqlite:///"):
             db_file = app.config["SQLALCHEMY_DATABASE_URI"].replace("sqlite:///", "")
             os.makedirs(os.path.dirname(db_file), exist_ok=True)
+
     #connecting sqlalchemy to flask app.
     db.init_app(app)
     #helps flask manage user sessions
@@ -107,6 +121,41 @@ def create_app():
         if current_user.is_authenticated:
                 return redirect(url_for("home"))
         return render_template("starter.html")
+    
+    # Add Pet - from jerome code
+    @app.route("/add_pet", methods=["GET", "POST"])
+    @login_required
+    def add_pet():
+        if request.method == "GET":
+            return render_template("add_pet.html")
+
+        name = (request.form.get("name") or "").strip()
+        species = (request.form.get("species") or "").strip()
+        photo = request.files.get("photo")
+
+        if not name or not species:
+            flash("Name and species are required!", "danger")
+            return redirect(url_for("add_pet"))
+
+        filename = None
+        if photo and photo.filename:
+            if not allowed_file(photo.filename):
+                flash("Invalid file type. Please upload PNG/JPG/GIF.", "danger")
+                return redirect(url_for("add_pet"))
+            safe = secure_filename(photo.filename)
+            root, ext = os.path.splitext(safe)
+            unique = f"{root}_{uuid.uuid4().hex[:8]}{ext}"
+            save_path = os.path.join(app.config["UPLOAD_FOLDER"], unique)
+            photo.save(save_path)
+            # store web path for templates:
+            filename = f"/static/uploads/{unique}"
+
+        pet = Pet(name=name, type=species, photo_path=filename or "", owner_id=current_user.id)
+        db.session.add(pet)
+        db.session.commit()
+
+        flash("Pet added successfully!", "success")
+        return redirect(url_for("home"))
 
     @app.route("/add_task")
     @login_required
@@ -130,8 +179,6 @@ def create_app():
             records = pet.medical_record.to_view()
         else:
             records = {"vaccine": "","allergies": "","medication": "","vet_info": "" }
-
-        
         return render_template("pet_profile.html", pet=pet.to_card(), tasks=pet_tasks, records=records)
 
 
@@ -142,16 +189,65 @@ def create_app():
         if pet.medical_record:
             records = pet.medical_record.to_view()
         else:
-            records = {
-                "vaccine": "",
-                "allergies": "",
-                "medication": "",
-                "vet_info": ""
-            }
-        
-        records = {"vaccine": "","allergies": "","medication": "","vet_info": "" }  
+             records = {"vaccine": "","allergies": "","medication": "","vet_info": "" }  
 
         return render_template("medical_records.html", pet=pet.to_card(), records=records)
+    
+    #jerome's code:
+    @app.route("/pets/<int:pet_id>/edit", methods=["GET", "POST"])
+    @login_required
+    def edit_pet(pet_id):
+        # Make sure the pet belongs to the logged-in user
+        pet = Pet.query.filter_by(id=pet_id, owner_id=current_user.id).first_or_404()
+
+        if request.method == "POST":
+            # Read form data
+            name = (request.form.get("name") or "").strip()
+            species = (request.form.get("species") or "").strip()
+            file = request.files.get("photo")
+
+            # Validate basic fields
+            if not name or not species:
+                flash("Name and species are required.", "danger")
+                return redirect(url_for("edit_pet", pet_id=pet.id))
+
+            # Update text fields
+            pet.name = name
+            pet.type = species
+
+            # handle new photo upload
+            if file and file.filename:
+                if not allowed_file(file.filename):
+                    flash("Invalid file type. Upload PNG/JPG/GIF.", "danger")
+                    return redirect(url_for("edit_pet", pet_id=pet.id))
+
+                safe = secure_filename(file.filename)
+                root, ext = os.path.splitext(safe)
+                unique = f"{root}_{uuid.uuid4().hex[:8]}{ext}"
+                upload_dir = app.config["UPLOAD_FOLDER"]
+                os.makedirs(upload_dir, exist_ok=True)
+                save_path = os.path.join(upload_dir, unique)
+                file.save(save_path)
+
+                # try to delete the old file (only if it was in /static/uploads)
+                if pet.photo_path and pet.photo_path.startswith("/static/uploads/"):
+                    old_fs_path = pet.photo_path.lstrip("/")  
+                    try:
+                        os.remove(old_fs_path)
+                    except OSError:
+                        # If the file is missing ignore the error
+                        pass
+
+                # Store the new web path
+                pet.photo_path = f"/static/uploads/{unique}"
+
+            # 6. Commit to DB and redirect back to dashboard
+            db.session.commit()
+            flash("Pet updated successfully.", "success")
+            return redirect(url_for("home"))
+
+        # GET: show the edit form with current data
+        return render_template("edit_pet.html", pet=pet)
 
     @app.route("/register", methods = ['POST', "GET"])
     def register():
@@ -182,9 +278,6 @@ def create_app():
         return render_template("register.html")
     
     return app
-
-
-
 
 
 if __name__ == "__main__":
