@@ -185,33 +185,71 @@ def create_app():
     @app.route("/records/<int:pet_id>")
     @login_required
     def medical_records(pet_id):
-        pet = Pet.query.filter_by(id=pet_id, owner_id=current_user.id).first_or_404()
+        pet = Pet.query.filter_by(id=pet_id, owner_id=current_user.id).first_or_404() #making sure pet belogns to curr user
         if pet.medical_record:
             records = pet.medical_record.to_view()
         else:
-             records = {"vaccine": "","allergies": "","medication": "","vet_info": "" }  
+             records = {"vaccine": "","allergies": "","medication": "","vet_info": "" }  #default record (blank)
 
         return render_template("medical_records.html", pet=pet.to_card(), records=records)
     
-    @app.route("/pets/<int:pet_id>/edit", methods=["GET", "POST"])
+    @app.route("/records/<int:pet_id>/edit", methods=["GET", "POST"])
     @login_required
     def edit_med(pet_id):
-            dummy =  { 
-                "vaccine": "FVRCP, Rabies", 
-                "allergies": "None", 
-                "medication": "None", 
-                "vet_info": "UCR Vet Clinic"
-            }
-            if request.method == "POST":
-                flash("Edit_med POST works!", "success")
-                return redirect(url_for("medical_records", pet_id=pet_id))
-            return render_template("edit_med.html", pet={"id": pet_id, "name": "Test Pet"}, records=dummy)
+        pet = Pet.query.filter_by(id=pet_id, owner_id=current_user.id).first_or_404() #curr pet belongs to curr user
+        record = pet.medical_record #get exisitng record
+
+        if request.method == "POST": #store all fields of data from frontend
+            vaccine = (request.form.get("vaccine") or "").strip()
+            allergies = (request.form.get("allergies") or "").strip()
+            medication = (request.form.get("medication") or "").strip()
+            vet_info = (request.form.get("vet_info") or "").strip()
+
+            if record is None: #replace dummy record with newly created record if none exists. none exists by default
+                record = MedicalRecord(
+                    pet_id=pet.id,
+                    vaccine=vaccine,
+                    allergies=allergies,
+                    medication=medication,
+                    vet_info=vet_info,
+                )
+                db.session.add(record) #add to db and store it
+            else: #if record already exists, update fields
+                record.vaccine = vaccine
+                record.allergies = allergies
+                record.medication = medication
+                record.vet_info = vet_info
+
+            db.session.commit() #commit changes to db
+            flash("Medical records updated!", "success") #success message
+            return redirect(url_for("medical_records", pet_id=pet.id))
+
+        #show exiting data
+        if record:
+            data = record.to_view()
+        else: #show default blank fields (double check and hardcode again just in case)
+            data = {"vaccine": "", "allergies": "", "medication": "", "vet_info": ""}
+
+        return render_template("edit_med.html", pet=pet.to_card(), records=data)
+
 
     
-    @app.route("/pets/<int:pet_id>/edit", methods=["GET", "POST"])
+    @app.route("/records/<int:pet_id>/clear", methods=["POST"])
     @login_required
     def delete_med(pet_id):
-        flash("Delete_med button works!", "info")
+        pet = Pet.query.filter_by(id=pet_id, owner_id=current_user.id).first_or_404() #pet needs to belong to current user
+        record = pet.medical_record
+
+        #if record exists, clear all fields and commit to db "deleting it"
+        #we do not want to delete the rows, just "clear" the data
+        if record:
+            record.vaccine = ""
+            record.allergies = ""
+            record.medication = ""
+            record.vet_info = ""
+            db.session.commit()
+
+        flash("Medical Records Cleared!", "warning")
         return redirect(url_for("medical_records", pet_id=pet_id))
     
 
