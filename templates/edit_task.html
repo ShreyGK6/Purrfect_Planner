@@ -2,9 +2,7 @@
 {% block content %}
 <h2 class="mb-3">Edit Task</h2>
 
-<form class="col-12 col-md-8 col-lg-6"
-      method="post"
-      action="{{ url_for('edit_task', task_id=task.id) }}">
+<form class="col-12 col-md-8 col-lg-6" method="post" action="{{ url_for('edit_task', task_id=task.id) }}">
   <div class="mb-3">
     <label class="form-label">Pet</label>
     <select class="form-select" name="pet_id" required>
@@ -15,3 +13,39 @@
       {% endfor %}
     </select>
   </div>
+
+  <div class="mb-3">
+    <label class="form-label">Task</label>
+    <input class="form-control" name="title" value="{{ task.title }}" required>
+  </div>
+
+  <div class="mb-3">
+    <label class="form-label">Description</label>
+    <textarea class="form-control" name="desc" rows="3">{{ task.desc }}</textarea>
+  </div>
+
+  <div class="mb-3">
+    <label class="form-label">Date/Time</label>
+    <input class="form-control"
+           type="datetime-local"
+           name="date"
+           value="{{ task.date.strftime('%Y-%m-%dT%H:%M') if task.date else '' }}"
+           required>
+  </div>
+
+  <div class="mb-3">
+    <label class="form-label">Repeat</label>
+    <select class="form-select" name="repeat">
+      <option {% if task.repeat == 'None' %}selected{% endif %}>None</option>
+      <option {% if task.repeat == 'Daily' %}selected{% endif %}>Daily</option>
+      <option {% if task.repeat == 'Weekly' %}selected{% endif %}>Weekly</option>
+      <option {% if task.repeat == 'Monthly' %}selected{% endif %}>Monthly</option>
+    </select>
+  </div>
+
+  <div class="mt-4 d-flex gap-2">
+    <button class="btn btn-success" type="submit">Save Changes</button>
+    <a class="btn btn-link" href="{{ url_for('home') }}">Cancel</a>
+  </div>
+</form>
+{% endblock %}
