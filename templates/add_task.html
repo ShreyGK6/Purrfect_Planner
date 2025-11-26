@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 {% block content %}
 <h2 class="mb-3">Add Task</h2>
-<form class="col-12 col-md-8 col-lg-6">
+<form class="col-12 col-md-8 col-lg-6" method="post" action="{{ url_for('add_task') }}">
   <div class="mb-3">
     <label class="form-label">Pet</label>
     <select class="form-select" name="pet_id" required>
