@@ -193,6 +193,31 @@ def create_app():
 
         return render_template("medical_records.html", pet=pet.to_card(), records=records)
     
+    @app.route("/pets/<int:pet_id>/edit", methods=["GET", "POST"])
+    @login_required
+    def edit_med(pet_id):
+            dummy =  { 
+                "vaccine": "FVRCP, Rabies", 
+                "allergies": "None", 
+                "medication": "None", 
+                "vet_info": "UCR Vet Clinic"
+            }
+            if request.method == "POST":
+                flash("Edit_med POST works!", "success")
+                return redirect(url_for("medical_records", pet_id=pet_id))
+            return render_template("edit_med.html", pet={"id": pet_id, "name": "Test Pet"}, records=dummy)
+
+    
+    @app.route("/pets/<int:pet_id>/edit", methods=["GET", "POST"])
+    @login_required
+    def delete_med(pet_id):
+        flash("Delete_med button works!", "info")
+        return redirect(url_for("medical_records", pet_id=pet_id))
+    
+
+
+
+    
     #jerome's code:
     @app.route("/pets/<int:pet_id>/edit", methods=["GET", "POST"])
     @login_required
