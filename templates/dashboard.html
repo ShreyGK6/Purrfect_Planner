@@ -40,14 +40,41 @@
 <hr class="my-4">
 
 <h4 class="mt-5 mb-3">Upcoming Tasks</h4>
-<div class="list-group"> <!-- to make list-->
+<div class="list-group">
   {% for t in tasks %}
   <div class="list-group-item d-flex justify-content-between align-items-center">
     <div>
-      <div class="fw-semibold">{{ t.title }}</div>
-      <div class="small text-muted">{{ t.desc }} ~ {{ t.date }} ~ {{ t.repeat }}</div>
+      <div class="fw-semibold">
+        {{ t.title }}
+        {% if t.status == 'completed' %}
+          <span class="badge bg-success ms-2">Done</span>
+        {% elif t.status == 'reminder_sent' %}
+          <span class="badge bg-info ms-2">Reminder Sent</span>
+        {% endif %}
+      </div>
+      <div class="small text-muted">
+        {{ t.desc }} ~ {{ t.date }} ~ {{ t.repeat }}
+      </div>
     </div>
-    <a class="btn btn-sm btn-outline-success" href="#">Mark Complete</a>
+
+    <div class="d-flex gap-2">
+      <form method="post" action="{{ url_for('complete_task', task_id=t.id) }}">
+        <button class="btn btn-sm btn-outline-success"
+                {% if t.status == 'completed' %}disabled{% endif %}>
+          Mark Complete
+        </button>
+      </form>
+
+      <a class="btn btn-sm btn-outline-secondary"
+         href="{{ url_for('edit_task', task_id=t.id) }}">
+        Edit
+      </a>
+
+      <form method="post" action="{{ url_for('delete_task', task_id=t.id) }}"
+            onsubmit="return confirm('Delete this task?');">
+        <button class="btn btn-sm btn-outline-danger">Delete</button>
+      </form>
+    </div>
   </div>
   {% endfor %}
 </div>
