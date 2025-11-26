@@ -1,0 +1,30 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="d-flex align-items-center mb-4">
+    <img src="{{ pet.photo_path }}" alt="{{ pet.name }}" class="me-3 rounded"
+        style="width:120px;height:120px;object-fit:cover" onerror="this.src='https://placehold.co/120x120?text=Pet'">
+    <div>
+        <h2 class="mb-0">{{ pet.name }}</h2>
+        <div class="text-muted">{{ pet.type }}</div>
+    </div>
+</div>
+
+<h4 class="mb-3">Tasks</h4>
+<ul class="list-group mb-4">
+    {% for t in tasks %}
+    <li class="list-group-item">
+        <span class="fw-semibold">{{ t.title }}</span> — {{ t.desc }}
+        <div class="small text-muted">{{ t.date }} • {{ t.repeat }}</div>
+    </li>
+    {% endfor %}
+</ul>
+
+<div class="d-flex flex-wrap gap-2 mb-3">
+    <a class="btn btn-success" href="{{ url_for('add_task') }}?pet_id={{ pet.id }}">Add Task</a>
+    <a class="btn btn-outline-primary" href="{{ url_for('medical_records', pet_id=pet.id) }}">
+        Medical Records
+    </a>
+    <a class="btn btn-outline-secondary" href="{{ url_for('home') }}">Back to Dashboard</a>
+</div>
+
+{% endblock %}
