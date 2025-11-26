@@ -7,6 +7,7 @@ import uuid
 from config import Config
 from models import db, User, Pet, Task, MedicalRecord
 from datetime import datetime
+from utils.notifications import notifications_bp
 
 #loading environment variables from .env 
 load_dotenv()
@@ -41,7 +42,8 @@ MOCK_RECORDS = {
 def create_app():
     #making flask app and point it to templates and static folders
     app = Flask(__name__, template_folder="templates", static_folder="static")
-    app.config.from_object(Config)
+    app.config.from_object(Config)  
+    app.register_blueprint(notifications_bp)
 
     #uploads config - jerome code
     app.config["UPLOAD_FOLDER"] = os.path.join(app.static_folder, "uploads")  # absolute FS path
@@ -129,15 +131,12 @@ def create_app():
     def add_pet():
         if request.method == "GET":
             return render_template("add_pet.html")
-
         name = (request.form.get("name") or "").strip()
         species = (request.form.get("species") or "").strip()
         photo = request.files.get("photo")
-
         if not name or not species:
             flash("Name and species are required!", "danger")
             return redirect(url_for("add_pet"))
-
         filename = None
         if photo and photo.filename:
             if not allowed_file(photo.filename):
@@ -150,11 +149,9 @@ def create_app():
             photo.save(save_path)
             # store web path for templates:
             filename = f"/static/uploads/{unique}"
-
         pet = Pet(name=name, type=species, photo_path=filename or "", owner_id=current_user.id)
         db.session.add(pet)
         db.session.commit()
-
         flash("Pet added successfully!", "success")
         return redirect(url_for("home"))
 
@@ -292,7 +289,6 @@ def create_app():
             records = pet.medical_record.to_view()
         else:
              records = {"vaccine": "","allergies": "","medication": "","vet_info": "" }  
-
         return render_template("medical_records.html", pet=pet.to_card(), records=records)
     
     @app.route("/records/<int:pet_id>/edit", methods=["GET", "POST"])
@@ -300,13 +296,11 @@ def create_app():
     def edit_med(pet_id):
         pet = Pet.query.filter_by(id=pet_id, owner_id=current_user.id).first_or_404() #curr pet belongs to curr user
         record = pet.medical_record #get exisitng record
-
         if request.method == "POST": #store all fields of data from frontend
             vaccine = (request.form.get("vaccine") or "").strip()
             allergies = (request.form.get("allergies") or "").strip()
             medication = (request.form.get("medication") or "").strip()
             vet_info = (request.form.get("vet_info") or "").strip()
-
             if record is None: #replace dummy record with newly created record if none exists. none exists by default
                 record = MedicalRecord(
                     pet_id=pet.id,
@@ -321,7 +315,6 @@ def create_app():
                 record.allergies = allergies
                 record.medication = medication
                 record.vet_info = vet_info
-
             db.session.commit() #commit changes to db
             flash("Medical records updated!", "success") #success message
             return redirect(url_for("medical_records", pet_id=pet.id))
@@ -341,7 +334,6 @@ def create_app():
     def delete_med(pet_id):
         pet = Pet.query.filter_by(id=pet_id, owner_id=current_user.id).first_or_404() #pet needs to belong to current user
         record = pet.medical_record
-
         #if record exists, clear all fields and commit to db "deleting it"
         #we do not want to delete the rows, just "clear" the data
         if record:
@@ -350,7 +342,6 @@ def create_app():
             record.medication = ""
             record.vet_info = ""
             db.session.commit()
-
         flash("Medical Records Cleared!", "warning")
         return redirect(url_for("medical_records", pet_id=pet_id))
     
@@ -361,28 +352,23 @@ def create_app():
     def edit_pet(pet_id):
         # Make sure the pet belongs to the logged-in user
         pet = Pet.query.filter_by(id=pet_id, owner_id=current_user.id).first_or_404()
-
         if request.method == "POST":
             # Read form data
             name = (request.form.get("name") or "").strip()
             species = (request.form.get("species") or "").strip()
             file = request.files.get("photo")
-
             # Validate basic fields
             if not name or not species:
                 flash("Name and species are required.", "danger")
                 return redirect(url_for("edit_pet", pet_id=pet.id))
-
             # Update text fields
             pet.name = name
             pet.type = species
-
             # handle new photo upload
             if file and file.filename:
                 if not allowed_file(file.filename):
                     flash("Invalid file type. Upload PNG/JPG/GIF.", "danger")
                     return redirect(url_for("edit_pet", pet_id=pet.id))
-
                 safe = secure_filename(file.filename)
                 root, ext = os.path.splitext(safe)
                 unique = f"{root}_{uuid.uuid4().hex[:8]}{ext}"
@@ -390,7 +376,6 @@ def create_app():
                 os.makedirs(upload_dir, exist_ok=True)
                 save_path = os.path.join(upload_dir, unique)
                 file.save(save_path)
-
                 # try to delete the old file (only if it was in /static/uploads)
                 if pet.photo_path and pet.photo_path.startswith("/static/uploads/"):
                     old_fs_path = pet.photo_path.lstrip("/")  
@@ -399,16 +384,13 @@ def create_app():
                     except OSError:
                         # If the file is missing ignore the error
                         pass
-
                 # Store the new web path
                 pet.photo_path = f"/static/uploads/{unique}"
-
-            # 6. Commit to DB and redirect back to dashboard
+            # Commit to DB and redirect back to dashboard
             db.session.commit()
             flash("Pet updated successfully.", "success")
             return redirect(url_for("home"))
-
-        # GET: show the edit form with current data
+        # show the edit form with current data
         return render_template("edit_pet.html", pet=pet)
     
     #jerome code - delete pet
@@ -417,17 +399,14 @@ def create_app():
     def delete_pet(pet_id):
         # Make sures the pet belongs to the logged in user
         pet = Pet.query.filter_by(id=pet_id, owner_id=current_user.id).first_or_404()
-
         if pet.photo_path and pet.photo_path.startswith("/static/uploads/"):
             old_fs_path = pet.photo_path.lstrip("/")  
             try:
                 os.remove(old_fs_path)
             except OSError:
                 pass
-
         db.session.delete(pet)
         db.session.commit()
-
         flash("Pet deleted successfully (and related tasks/records were removed).", "success")
         return redirect(url_for("home"))
 

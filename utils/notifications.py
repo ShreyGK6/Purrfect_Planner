@@ -55,7 +55,6 @@ def send_email_reminder(to_email, task_name, due_time):
 @notifications_bp.route("/notifications", methods=["GET", "POST"])
 def index():
     if request.method == "POST":
-        task_id = request.form.get("task_id")
         to_email = request.form.get("email")
         task_name = request.form.get("task_name")
         due_time_str = request.form.get("due_time")
