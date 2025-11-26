@@ -2,38 +2,38 @@
 {% block content %}
 <h2 class="mb-3">Add Task</h2>
 <form class="col-12 col-md-8 col-lg-6" method="post" action="{{ url_for('add_task') }}">
-    <div class="mb-3">
-        <label class="form-label">Pet</label>
-        <select class="form-select" name="pet_id" required>
-            {% for p in pets %}
-            <option value="{{ p.id }}">{{ p.name }}</option>
-            {% endfor %}
-        </select>
-    </div>
-    <div class="mb-3">
-        <label class="form-label">Task</label>
-        <input class="form-control" name="title" required>
-    </div>
-    <div class="mb-3">
-        <label class="form-label">Description</label>
-        <textarea class="form-control" name="desc" rows="3"></textarea>
-    </div>
-    <div class="mb-3">
-        <label class="form-label">Date/Time</label>
-        <input class="form-control" type="datetime-local" name="date" required>
-    </div>
-    <div class="mb-3">
-        <label class="form-label">Repeat</label>
-        <select class="form-select" name="repeat">
-            <option>None</option>
-            <option>Daily</option>
-            <option>Weekly</option>
-            <option>Monthly</option>
-        </select>
-    </div>
-    <div class="mt-4">
-        <button class="btn btn-success">Create</button>
-        <a class="btn btn-link" href="{{ url_for('home') }}">Cancel</a> <!-- return to home-->
-    </div>
+  <div class="mb-3">
+    <label class="form-label">Pet</label>
+    <select class="form-select" name="pet_id" required>
+      {% for p in pets %}
+      <option value="{{ p.id }}">{{ p.name }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="mb-3">
+    <label class="form-label">Task</label>
+    <input class="form-control" name="title" required>
+  </div>
+  <div class="mb-3">
+    <label class="form-label">Description</label>
+    <textarea class="form-control" name="desc" rows="3"></textarea>
+  </div>
+  <div class="mb-3">
+    <label class="form-label">Date/Time</label>
+    <input class="form-control" type="datetime-local" name="date" required>
+  </div>
+  <div class="mb-3">
+    <label class="form-label">Repeat</label>
+    <select class="form-select" name="repeat">
+      <option>None</option>
+      <option>Daily</option>
+      <option>Weekly</option>
+      <option>Monthly</option>
+    </select>
+  </div>
+  <div class="mt-4">
+    <button class="btn btn-success">Create</button>
+    <a class="btn btn-link" href="{{ url_for('home') }}">Cancel</a> <!-- return to home-->
+  </div>
 </form>
 {% endblock %}

@@ -1,16 +1,14 @@
-{% extends "base.html" %}
-{% block title %}Dashboard · Purrfect Planner{% endblock %}
+{% extends 'base.html' %}
 {% block content %}
+<div class="d-flex align-items-center justify-content-between mb-3">
+    <h2 class="mb-0">Welcome, {{ user.username}} !</h2>
+    <a class="btn btn-danger" href="{{ url_for('add_task') }}">+ Add Task</a>
+</div>
 
 <div class="d-flex justify-content-between align-items-center mb-3">
     <h1 class="h4 m-0">Your Pets</h1>
-    <div class="d-flex gap-2">
-        <a class="btn btn-sm btn-success" href="{{ url_for('add_task') }}">Add Task</a>
-        <a class="btn btn-sm btn-primary" href="{{ url_for('add_pet') }}">Add Pet</a>
-    </div>
+    <a class="btn btn-sm btn-primary" href="{{ url_for('add_pet') }}">Add Pet</a>
 </div>
-
-
 {% if pets and pets|length %}
 <div class="row g-3">
     {% for p in pets %}
@@ -37,7 +35,6 @@
                         Delete
                     </button>
                 </form>
-
             </div>
         </div>
     </div>
@@ -46,20 +43,19 @@
 {% else %}
 <div class="alert alert-info">You haven’t added any pets yet.</div>
 {% endif %}
-
 <hr class="my-4">
 
-<h4 class="mt-2 mb-3">Upcoming Tasks</h4>
-{% if tasks and tasks|length %}
+<h4 class="mt-5 mb-3">Upcoming Tasks</h4>
 <div class="list-group">
     {% for t in tasks %}
     <div class="list-group-item d-flex justify-content-between align-items-center">
         <div>
             <div class="fw-semibold">
-                {% if t.status == 'completed' %}
-                <span class="text-decoration-line-through">{{ t.title }}</span>
-                {% else %}
                 {{ t.title }}
+                {% if t.status == 'completed' %}
+                <span class="badge bg-success ms-2">Done</span>
+                {% elif t.status == 'reminder_sent' %}
+                <span class="badge bg-info ms-2">Reminder Sent</span>
                 {% endif %}
             </div>
             <div class="small text-muted">
@@ -68,28 +64,22 @@
         </div>
 
         <div class="d-flex gap-2">
-            {% if t.status != 'completed' %}
-            <form method="post" action="{{ url_for('complete_task', task_id=t.id) }}" class="m-0">
-                <button type="submit" class="btn btn-sm btn-outline-success">
+            <form method="post" action="{{ url_for('complete_task', task_id=t.id) }}">
+                <button class="btn btn-sm btn-outline-success" {% if t.status=='completed' %}disabled{% endif %}>
                     Mark Complete
                 </button>
             </form>
-            {% else %}
-            <span class="badge bg-success">Completed</span>
-            {% endif %}
 
-            <form method="post" action="{{ url_for('delete_task', task_id=t.id) }}" class="m-0"
+            <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('edit_task', task_id=t.id) }}">
+                Edit
+            </a>
+
+            <form method="post" action="{{ url_for('delete_task', task_id=t.id) }}"
                 onsubmit="return confirm('Delete this task?');">
-                <button type="submit" class="btn btn-sm btn-outline-danger">
-                    Delete
-                </button>
+                <button class="btn btn-sm btn-outline-danger">Delete</button>
             </form>
         </div>
     </div>
     {% endfor %}
 </div>
-{% else %}
-<div class="text-muted">No tasks yet.</div>
-{% endif %}
-
 {% endblock %}
