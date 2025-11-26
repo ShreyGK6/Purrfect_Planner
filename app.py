@@ -350,6 +350,26 @@ def create_app():
 
         # GET: show the edit form with current data
         return render_template("edit_pet.html", pet=pet)
+    
+    #jerome code - delete pet
+    @app.route("/pets/<int:pet_id>/delete", methods=["POST"])
+    @login_required
+    def delete_pet(pet_id):
+        # Make sures the pet belongs to the logged in user
+        pet = Pet.query.filter_by(id=pet_id, owner_id=current_user.id).first_or_404()
+
+        if pet.photo_path and pet.photo_path.startswith("/static/uploads/"):
+            old_fs_path = pet.photo_path.lstrip("/")  
+            try:
+                os.remove(old_fs_path)
+            except OSError:
+                pass
+
+        db.session.delete(pet)
+        db.session.commit()
+
+        flash("Pet deleted successfully (and related tasks/records were removed).", "success")
+        return redirect(url_for("home"))
 
     @app.route("/register", methods = ['POST', "GET"])
     def register():
