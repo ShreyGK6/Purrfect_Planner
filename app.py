@@ -6,6 +6,7 @@ from werkzeug.utils import secure_filename
 import uuid
 from config import Config
 from models import db, User, Pet, Task, MedicalRecord
+from datetime import datetime
 
 #loading environment variables from .env 
 load_dotenv()
@@ -157,14 +158,51 @@ def create_app():
         flash("Pet added successfully!", "success")
         return redirect(url_for("home"))
 
-    @app.route("/add_task")
+    @app.route("/add_task", methods=['POST', 'GET'])
     @login_required
     def add_task(): #set up ui for adding the tasks
-        my_pets = Pet.query.filter_by(owner_id=current_user.id).all()
+        #getting pets from db for current user
+        my_pets = Pet.query.filter_by(owner_id=current_user.id).all() 
         pets = []
         for p in my_pets:
             pets.append(p.to_card())
-
+        if request.method == "POST": #store all fields of data from frontend
+            pet_id_raw = request.form.get("pet_id")
+            title = (request.form.get("title") or "").strip()
+            desc = (request.form.get("desc") or "").strip()
+            date_str = request.form.get("date")
+            repeat = request.form.get("repeat") or "None"
+            #checking if required fields are there
+            if not (pet_id_raw and title and date_str):
+                flash("Pet, title, and date/time are required.", "danger")
+                return render_template("add_task.html", pets=pets)
+            try:
+                pet_id = int(pet_id_raw)
+            except ValueError:
+                flash("Invalid pet selection.", "danger")
+                return render_template("add_task.html", pets=pets)
+            #making sure the pet belongs to the current user
+            pet = Pet.query.filter_by(id=pet_id, owner_id=current_user.id).first()
+            if not pet:
+                flash("You cannot add tasks for that pet.", "danger")
+                return render_template("add_task.html", pets=pets)
+            #checking date format
+            try:
+                due_time = datetime.strptime(date_str, "%Y-%m-%dT%H:%M")
+            except ValueError:
+                flash("Invalid date/time format.", "danger")
+                return render_template("add_task.html", pets=pets)
+            task = Task()                #creating empty task 
+            task.pet_id = pet.id         #assigning values
+            task.title = title
+            task.desc = desc
+            task.date = due_time
+            task.repeat = repeat
+            task.status = "pending"
+            db.session.add(task)
+            db.session.commit()
+            flash("Task created successfully.", "success")
+            return redirect(url_for("home"))
         return render_template("add_task.html", pets = pets) #make sure to pass in pets from db, using mock pets now
 
     @app.route("/pet_profile<int:pet_id>")
@@ -278,7 +316,6 @@ def create_app():
         return render_template("register.html")
     
     return app
-
 
 if __name__ == "__main__":
     app = create_app()
