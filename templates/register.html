@@ -11,6 +11,15 @@
 </head>
 
 <body>
+
+  {% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+  {% for category, message in messages %}
+  <div class="alert alert-{{ category }} mt-3">{{ message }}</div>
+  {% endfor %}
+  {% endif %}
+  {% endwith %}
+
   <main class="container py-5">
     <h2 class="mb-3">Create an account</h2>
     <form method="post" class="col-12 col-md-6 col-lg-5">

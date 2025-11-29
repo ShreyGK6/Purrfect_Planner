@@ -4,40 +4,16 @@ from dotenv import load_dotenv
 import os
 from werkzeug.utils import secure_filename
 import uuid
-from config import Config
-from models import db, User, Pet, Task, MedicalRecord
+from purrfectplanner.config import Config
+from purrfectplanner.models import db, User, Pet, Task, MedicalRecord
+
 from datetime import datetime
-from utils.notifications import notifications_bp
+from purrfectplanner.utils.notifications import notifications_bp
 
 #loading environment variables from .env 
 load_dotenv()
 
-app = Flask(__name__)
-app.secret_key = "dev-key" #for flash messages only
 
-#testing
-MOCK_USER = {"username": "shivani"}
-
-MOCK_PETS = [
-    {"id": 1, "name": "Mochi", "type": "cat", "photo_path": "/static/img/placeholder_cat.png"},
-    {"id": 2, "name": "Buddy", "type": "dog", "photo_path": "/static/img/placeholder_dog.png"},
-    {"id": 3, "name": "Luna", "type": "cat", "photo_path": "/static/img/placeholder_cat.png"}
-]
-
-#need to include date with time
-MOCK_TASKS = [
-  {"id": 101, "pet_id": 1, "title": "Litter box clean",   "desc": "Scoop clumps and add fresh litter.", "date": "2025-11-06T20:00", "repeat": "daily",   "status": "pending"},
-  {"id": 102, "pet_id": 1, "title": "Brush coat",         "desc": "Brush to reduce shedding.",          "date": "2025-11-08T17:00", "repeat": "weekly",  "status": "pending"},
-  {"id": 103, "pet_id": 1, "title": "FVRCP booster check","desc": "Review vaccine record.",            "date": "2025-12-01T10:30", "repeat": "none",    "status": "pending"},
-  {"id": 201, "pet_id": 2, "title": "Morning walk",       "desc": "30 min leash walk.",                "date": "2025-11-06T07:30", "repeat": "daily",   "status": "pending"},
-  {"id": 202, "pet_id": 2, "title": "Heartworm preventive","desc":"Monthly chewable dose.",            "date": "2025-11-15T08:00", "repeat": "monthly", "status": "pending"},
-  {"id": 203, "pet_id": 2, "title": "Bath + nail trim",   "desc": "Wash and trim nails.",              "date": "2025-11-10T14:00", "repeat": "monthly", "status": "pending"}
-]
-
-MOCK_RECORDS = {
-    1: {"vaccine": "FVRCP, Rabies", "allergies": "None", "medication": "None", "vet_info": "UCR Vet Clinic"},
-    2: {"vaccine": "DHPP, Rabies", "allergies": "Chicken", "medication": "Fish oil", "vet_info": "Riverside Vet"},
-}
 
 def create_app():
     #making flask app and point it to templates and static folders
@@ -53,12 +29,15 @@ def create_app():
     def allowed_file(fname: str) -> bool:
         return "." in fname and fname.rsplit(".", 1)[1].lower() in ALLOWED_EXT
 
-    os.makedirs(app.config["UPLOAD_FOLDER"], exist_ok=True)
+    if not app.config.get("TESTING", False):
+        os.makedirs(app.config["UPLOAD_FOLDER"], exist_ok=True)
 
-    #making sure database foler exists for sqlite
-    if app.config["SQLALCHEMY_DATABASE_URI"].startswith("sqlite:///"):
+        if app.config["SQLALCHEMY_DATABASE_URI"].startswith("sqlite:///"):
             db_file = app.config["SQLALCHEMY_DATABASE_URI"].replace("sqlite:///", "")
-            os.makedirs(os.path.dirname(db_file), exist_ok=True)
+            folder = os.path.dirname(db_file)
+            if folder:
+                os.makedirs(folder, exist_ok=True)
+
 
     #connecting sqlalchemy to flask app.
     db.init_app(app)
@@ -108,7 +87,7 @@ def create_app():
                 return redirect(url_for("home"))
             else:
                 flash("Invalid login.", "danger")
-                return redirect(url_for("login.html"))
+                return redirect(url_for("login"))
 
 
         return render_template("login.html")
@@ -266,7 +245,7 @@ def create_app():
         flash("Task marked as complete.", "success")
         return redirect(request.referrer or url_for("home"))
 
-    @app.route("/pet_profile<int:pet_id>")
+    @app.route("/pet_profile/<int:pet_id>")
     @login_required
     def pet_profile(pet_id):
         pet = Pet.query.filter_by(id=pet_id, owner_id=current_user.id).first_or_404()
