@@ -4,11 +4,11 @@ from dotenv import load_dotenv
 import os
 from werkzeug.utils import secure_filename
 import uuid
-from purrfectplanner.config import Config
-from purrfectplanner.models import db, User, Pet, Task, MedicalRecord
+from config import Config
+from models import db, User, Pet, Task, MedicalRecord
 
 from datetime import datetime
-from purrfectplanner.utils.notifications import notifications_bp
+from utils.notifications import notifications_bp
 
 #loading environment variables from .env 
 load_dotenv()
