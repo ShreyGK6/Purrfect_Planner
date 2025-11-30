@@ -2,10 +2,13 @@ import sqlite3
 import smtplib
 import ssl
 from email.message import EmailMessage
-from datetime import datetime
+from datetime import datetime, timedelta
 from flask import Blueprint, render_template, request, redirect, url_for, flash
+from apscheduler.schedulers.background import BackgroundScheduler
 
 notifications_bp = Blueprint('notifications', __name__) 
+scheduler = BackgroundScheduler()
+scheduler.start()
 
 EMAIL_ADDRESS = "testingCS180@gmail.com"
 EMAIL_PASSWORD = "mukw qolm xwhj fcbw"  
@@ -63,15 +66,20 @@ def index():
             due_time_str = due_time_str.replace("T", " ")
             due_time = datetime.strptime(due_time_str, "%Y-%m-%d %H:%M")
         except ValueError:
-            flash("Invalid due time format! Use YYYY-MM-DD HH:MM or HTML datetime-local", "error")
+            flash("Invalid due time format!", "error")
             return redirect(url_for("notifications.index"))
 
-        success, message = send_email_reminder(to_email, task_name, due_time)
-        if success:
-            flash(message, "success")
-        else:
-            flash(f"Error sending reminder: {message}", "error")
+        reminder_time = due_time - timedelta(minutes = 10)
 
+        if reminder_time < datetime.now():
+            reminder_time = datetime.now() + timedelta(seconds = 5)
+
+        scheduler.add_job(send_email_reminder,
+            'date',
+            run_date = reminder_time,
+            args = [to_email, task_name, due_time])
+
+        flash(f"Reminder scheduled for {reminder_time.strftime('%Y-%m-%d %I:%M %p')}", "success")
         return redirect(url_for("notifications.index"))
 
     return render_template("index.html")
