@@ -5,8 +5,8 @@ from datetime import datetime
 
 os.environ["DATABASE_URL"] = "sqlite:///:memory:"
 
-from Purrfect_Planner.app import create_app
-from Purrfect_Planner.models import db, User, Pet, Task, MedicalRecord
+from purrfectplanner.app import create_app
+from purrfectplanner.models import db, User, Pet, Task, MedicalRecord
 
 
 @pytest.fixture
